@@ -15,12 +15,18 @@ const sleep = (seconds) => {
   });
 };
 
-async function requestJenkinsJob(jobName, params) {
-	const result = await CallJobJenkins(jobName, params);
+async function requestJenkinsJobWithParam(jobName, params) {
+	const result = await CallJobJenkinsWithParameters(jobName, params);
 	console.log(result);
 
 }
-function CallJobJenkins(jobName, params) {
+
+async function requestJenkinsJobWithoutParam(jobName, params) {
+	const result = await CallJobJenkinsWithoutParameters(jobName, params);
+	console.log(result);
+
+} 
+function CallJobJenkinsWithParameters(jobName, params) {
   const jenkinsEndpoint = core.getInput('url');
   const req = {
     method: 'POST',
@@ -43,6 +49,31 @@ function CallJobJenkins(jobName, params) {
     })
   );
 }
+
+function CallJobJenkinsWithoutParameters(jobName, params) {
+  const jenkinsEndpoint = core.getInput('url');
+  const req = {
+    method: 'POST',
+    url: `${jenkinsEndpoint}/job/${jobName}/build`,
+    //form: params,
+    headers: {
+      'Authorization': `Basic ${API_TOKEN}`
+    }
+  }
+  return new Promise((resolve, reject) => request(req)
+    .on('response', (res) => {
+      core.info(`>>> Job is started!`);
+      resolve();
+    })
+    .on("error", (err) => {
+      core.setFailed(err);
+      core.error(JSON.stringify(err));
+      clearTimeout(timer);
+      reject();
+    })
+  );
+}
+
 async function getJobStatus(jobName) {
   const jenkinsEndpoint = core.getInput('url');
   const req = {
@@ -87,10 +118,15 @@ async function main() {
     let jobName = core.getInput('job_name');
     if (core.getInput('parameter')) {
       params = JSON.parse(core.getInput('parameter'));
+	  
       core.info(`>>> Parameter ${params.toString()}`);
+	  requestJenkinsJobWithParam(jobName, params);
     }
+	else{
+		requestJenkinsJobWithoutParam(jobName, params);
+	}
     // POST API call
-    requestJenkinsJob(jobName, params);
+    //requestJenkinsJob(jobName, params);
 
     // Waiting for job completion
     if (core.getInput('wait') == 'true') {
